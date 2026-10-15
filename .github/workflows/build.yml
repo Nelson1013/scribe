@@ -16,6 +16,13 @@ jobs:
           java-version: 21
       - name: Install packages
         run: npm install
+      - name: Bundle the offline speech engine files
+        run: |
+          mkdir -p public/ort
+          for f in ort-wasm-simd-threaded.mjs ort-wasm-simd-threaded.wasm ort-wasm-simd-threaded.jsep.mjs ort-wasm-simd-threaded.jsep.wasm; do
+            src=$(find node_modules -path "*onnxruntime-web/dist/$f" | head -1)
+            if [ -n "$src" ]; then cp "$src" public/ort/; echo "bundled $f"; else echo "not found: $f (app will download it on first use)"; fi
+          done
       - name: Build web app
         run: npm run build
       - name: Create Android project
@@ -25,6 +32,15 @@ jobs:
           f=android/app/src/main/AndroidManifest.xml
           sed -i 's#</manifest>#    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n</manifest>#' "$f"
           grep -n "RECORD_AUDIO\|RecognitionService" "$f"
+      - name: Add the background recording service
+        run: |
+          d=android/app/src/main/java/com/scribe/dictation
+          mkdir -p "$d"
+          cp native/*.java "$d/"
+          f=android/app/src/main/AndroidManifest.xml
+          sed -i 's#</application>#    <service android:name=".BgService" android:exported="false" android:foregroundServiceType="microphone|dataSync" />\n    </application>#' "$f"
+          sed -i 's#</manifest>#    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n</manifest>#' "$f"
+          cat "$f"
       - name: Use the fixed signing key
         run: |
           mkdir -p ~/.android

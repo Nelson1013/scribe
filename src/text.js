@@ -36,9 +36,7 @@ export function processSegment(raw, base, o) {
     return base.replace(/[^.!?\n]*[.!?]?\s*$/, '').trimEnd();
   }
 
-  (o.dict || []).forEach(function (d) {
-    if (d && d.from) s = s.replace(new RegExp('\\b' + escapeRe(d.from) + '\\b', 'gi'), function () { return d.to || ''; });
-  });
+  s = applyDict(s, o.dict);
   if (o.commands) s = applyCommands(s);
   s = s.replace(/\bi\b/g, 'I');
   if (o.periodPause && s.trim() && !/[.!?\n]\s*$/.test(s)) s = s.trimEnd() + '.';
@@ -73,4 +71,41 @@ export function fmtTime(secs) {
   secs = Math.max(0, Math.floor(secs));
   var m = Math.floor(secs / 60), s = secs % 60;
   return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+export function applyDict(s, dict) {
+  (dict || []).forEach(function (d) {
+    if (d && d.from) s = s.replace(new RegExp('\\b' + escapeRe(d.from) + '\\b', 'gi'), function () { return d.to || ''; });
+  });
+  return s;
+}
+
+// Whisper segments [{t0, t1, text}] become timestamped lines: "[01:23] text".
+// Drops silence "hallucinations" like [BLANK_AUDIO] and runaway repeats.
+export function segmentsToText(segs, dict) {
+  var clean = [];
+  (segs || []).forEach(function (s) {
+    var t = applyDict((s.text || '').trim(), dict);
+    if (!t || /^[\[(].*[\])]$/.test(t)) return;
+    var n = clean.length;
+    if (n >= 2 && clean[n - 1].text === t && clean[n - 2].text === t) return;
+    clean.push({ t: s.t0 || 0, text: t });
+  });
+  var lines = [], cur = null;
+  clean.forEach(function (s) {
+    var span = cur ? s.t - cur.t : 0;
+    if (cur && (span < 6 || (span < 12 && !/[.!?]$/.test(cur.text)))) cur.text += ' ' + s.text;
+    else { cur = { t: s.t, text: s.text }; lines.push(cur); }
+  });
+  return lines.map(function (l) { return '[' + fmtTime(l.t) + '] ' + l.text; }).join('\n');
+}
+
+// Finds the [mm:ss] time that applies to the line at the caret. Returns seconds or null.
+export function stampAtCaret(text, caret) {
+  var before = text.slice(0, caret).split('\n');
+  for (var i = before.length - 1; i >= 0; i--) {
+    var m = before[i].match(/^\[(\d+):(\d{2})\]/);
+    if (m) return (+m[1]) * 60 + (+m[2]);
+  }
+  return null;
 }

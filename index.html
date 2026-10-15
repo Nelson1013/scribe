@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0F1316">
+<meta name="theme-color" content="#6B2FBF">
 <title>Scribe</title>
 <link rel="stylesheet" href="/src/style.css">
 </head>
@@ -15,8 +15,32 @@
 
 <main>
   <section id="v-rec">
+    <div class="seg" role="group" aria-label="Capture mode">
+      <button id="m-live" data-cap="live">Live</button>
+      <button id="m-rec" data-cap="rec">Record</button>
+      <button id="import" class="imp">Import file</button>
+    </div>
+    <p id="modehelp" class="help"></p>
     <textarea id="txt" placeholder="Tap the microphone and start speaking. You can also type or fix words here." aria-label="Transcript" spellcheck="true"></textarea>
     <div id="live" aria-live="polite"></div>
+
+    <div id="player" hidden>
+      <audio id="aud" controls preload="metadata"></audio>
+      <div class="prow">
+        <button id="back5">−5 s</button>
+        <button id="fwd5">+5 s</button>
+        <button id="speed">1×</button>
+        <button id="playline">Play from cursor</button>
+      </div>
+      <div class="prow">
+        <button id="trbtn" class="pri">Transcribe audio</button>
+        <button id="trcancel" hidden>Cancel</button>
+        <button id="adel" class="dng">Delete audio</button>
+      </div>
+      <progress id="trbar" max="1" value="0" hidden></progress>
+      <p id="trstat" role="status"></p>
+    </div>
+
     <div class="meta"><span id="wc">0 words</span><span id="timer">00:00</span></div>
     <p id="msg" role="status"></p>
     <div class="tools">
@@ -35,11 +59,14 @@
 
   <section id="v-lib" hidden>
     <input id="lq" type="search" placeholder="Search transcripts" aria-label="Search transcripts">
+    <button id="import2" class="btn">Import audio or video file</button>
     <div id="llist" class="list"></div>
   </section>
 
   <section id="v-set" hidden></section>
 </main>
+
+<input type="file" id="file" accept="audio/*,video/*,.m4a,.mp3,.wav,.ogg,.opus,.aac,.amr,.flac,.3gp,.mp4,.webm" hidden>
 
 <nav>
   <button data-view="rec" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Dictate</button>
